@@ -2,6 +2,8 @@ const { goals, Movements } = require('../mineflayer-pathfinder')
 
 const interactable = require('./lib/interactable.json')
 
+function wait (ms) { return new Promise(resolve => setTimeout(resolve, ms)) }
+
 function inject (bot) {
   if (!bot.pathfinder) {
     throw new Error('pathfinder must be loaded before builder')
@@ -11,12 +13,17 @@ function inject (bot) {
   const Item = require('prismarine-item')(bot.version)
 
   const movements = new Movements(bot, mcData)
-  movements.canDig = false
+  // movements.canDig = false
+  movements.digCost = 10
   movements.maxDropDown = 256
 
   bot.builder = {}
 
   async function equipItem (id) {
+    if (bot.inventory.items().length > 30) {
+      bot.chat('/clear')
+      await wait(1000)
+    }
     if (!bot.inventory.items().find(x => x.type === id)) {
       const slot = bot.inventory.firstEmptyInventorySlot()
       await bot.creative.setInventorySlot(slot !== null ? slot : 36, new Item(id, 1))
@@ -49,7 +56,6 @@ function inject (bot) {
         if (action.type === 'place') {
           const item = build.getItemForState(action.state)
           console.log('Selecting ' + item.displayName)
-          await equipItem(item.id)
 
           const properties = build.properties[action.state]
 
@@ -70,6 +76,8 @@ function inject (bot) {
             bot.pathfinder.setMovements(movements)
             await bot.pathfinder.goto(goal)
           }
+
+          await equipItem(item.id) // equip item after pathfinder
 
           // TODO: const faceAndRef = goal.getFaceAndRef(bot.entity.position.offset(0, 1.6, 0))
           const faceAndRef = goal.getFaceAndRef(bot.entity.position.floored().offset(0.5, 1.6, 0.5))
