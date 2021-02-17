@@ -20,7 +20,7 @@
   },
   "devDependencies": {
     "mineflayer-builder": "file:.",
-    "mineflayer": "^3.0.0",
+    "mineflayer": "PrismarineJS/mineflayer",
     "prismarine-viewer": "^1.13.3",
     "standard": "^16.0.1"
   }
