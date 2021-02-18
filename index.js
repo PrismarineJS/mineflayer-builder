@@ -58,6 +58,7 @@ function inject (bot) {
           console.log('Selecting ' + item.displayName)
 
           const properties = build.properties[action.state]
+          const half = properties.half ? properties.half : properties.type
 
           const faces = build.getPossibleDirections(action.state, action.pos)
           for (const face of faces) {
@@ -69,7 +70,8 @@ function inject (bot) {
           const goal = new goals.GoalPlaceBlock(action.pos, bot.world, {
             faces,
             facing: facing,
-            facing3D: is3D
+            facing3D: is3D,
+            half
           })
           if (!goal.isEnd(bot.entity.position.floored())) {
             console.log('pathfinding')
@@ -87,8 +89,9 @@ function inject (bot) {
 
           const refBlock = bot.blockAt(faceAndRef.ref)
           const sneak = interactable.indexOf(refBlock.name) > 0
+          const delta = faceAndRef.to.minus(faceAndRef.ref)
           if (sneak) bot.setControlState('sneak', true)
-          await bot._placeBlockWithOptions(refBlock, faceAndRef.face.scaled(-1), { half: properties.half ? properties.half : properties.type })
+          await bot._placeBlockWithOptions(refBlock, faceAndRef.face.scaled(-1), { half, delta })
           if (sneak) bot.setControlState('sneak', false)
 
           const block = bot.world.getBlock(action.pos)

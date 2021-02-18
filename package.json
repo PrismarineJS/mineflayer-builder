@@ -10,7 +10,7 @@
   "author": "Karang",
   "license": "MIT",
   "dependencies": {
-    "minecraft-data": "^2.74.0",
+    "minecraft-data": "^2.75.0",
     "mineflayer-pathfinder": "PrismarineJS/mineflayer-pathfinder",
     "prismarine-world": "^3.3.1",
     "prismarine-block": "^1.7.3",
