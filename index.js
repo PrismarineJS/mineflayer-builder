@@ -16,6 +16,7 @@ function inject (bot) {
   // movements.canDig = false
   movements.digCost = 10
   movements.maxDropDown = 256
+  bot.pathfinder.searchRadius = 10
 
   bot.builder = {}
 
