@@ -6,18 +6,14 @@
 [![Irc](https://img.shields.io/badge/chat-on%20irc-brightgreen.svg)](https://irc.gitter.im/)
 [![Try it on gitpod](https://img.shields.io/badge/try-on%20gitpod-brightgreen.svg)](https://gitpod.io/#https://github.com/PrismarineJS/prismarine-builder)
 
-A builder repository to make it easy to create new prismarine repo
+Work in progress. This is not an usable package yet. The goal is to make a library to make it easy to build any schematic.
 
 ## Usage
 
-```js
-const builder = require('prismarine-builder')
 
-builder.helloWorld()
-```
+* setup a flat world server
+* have the bot op and in creative (needed to get items and access to /clear command)
+* run `node examples/builder.js`
+
 
 ## API
-
-### helloWorld()
-
-Prints hello world
