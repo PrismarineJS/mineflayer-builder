@@ -21,6 +21,7 @@ bot.loadPlugin(builder)
 function wait (ms) { return new Promise(resolve => setTimeout(resolve, ms)) }
 
 bot.once('spawn', async () => {
+  console.info(bot.entity.height)
   mineflayerViewer(bot, { port: 3000 })
 
   bot.on('path_update', (r) => {
@@ -31,22 +32,31 @@ bot.once('spawn', async () => {
     bot.viewer.drawLine('path', path, 0xff00ff)
   })
 
-  schematic = await Schematic.read(await fs.readFile(path.resolve(__dirname, '../schematics/smallhouse1.schem')), bot.version)
+  schematic = await Schematic.read(await fs.readFile(path.resolve(__dirname, '../schematics/obi.schem')), bot.version)
   while (!bot.entity.onGround) {
     await wait(100)
   }
   bot.on('messagestr', (message, messagePosition, jsonMsg) => {
     if (message.includes('start')) {
       start()
-    }
+    } 
   })
   bot.on('chat', async (username, message) => {
     console.info(username, message)
     if (message === 'start') {
       start()
+    } else if (message === 'build') {
+      build()
     }
   })
 })
+
+async function build () {
+  const at = bot.entity.position.floored()
+  bot.chat('Building at ', at)
+  const build = new Build(schematic, bot.world, at)
+  bot.builder.build(build)
+}
 
 async function start () {
   bot.chat('/clear')

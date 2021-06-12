@@ -1,4 +1,4 @@
-const { goals, Movements } = require('../mineflayer-pathfinder')
+const { goals, Movements } = require('./mineflayer-pathfinder')
 
 const interactable = require('./lib/interactable.json')
 
@@ -20,7 +20,7 @@ function inject (bot) {
 
   bot.builder = {}
 
-  async function equipItem (id) {
+  async function OldequipItem (id) {
     if (bot.inventory.items().length > 30) {
       bot.chat('/clear')
       await wait(1000)
@@ -35,11 +35,22 @@ function inject (bot) {
     await bot.equip(item, 'hand')
   }
 
+  async function equipItem (id) {
+    await bot.setQuickBarSlot(5)
+    const item = bot.inventory.findInventoryItem(id, null)
+    if (!item) {
+      throw Error('no_blocks')
+    }
+    await bot.equip(item.type, 'hand')
+  }
+
   bot.builder.equipItem = equipItem
 
   // /fill ~-20 ~ ~-20 ~20 ~10 ~20 minecraft:air
 
   bot.builder.build = async (build) => {
+    let errorNoBlocks
+
     while (build.actions.length > 0) {
       const actions = build.getAvailableActions()
       console.log(`${actions.length} available actions`)
@@ -84,7 +95,15 @@ function inject (bot) {
             await bot.pathfinder.goto(goal)
           }
 
-          await equipItem(item.id) // equip item after pathfinder
+          try {
+            await equipItem(item.id) // equip item after pathfinder
+          } catch (e) {
+            if (e.message === 'no_blocks') {
+              errorNoBlocks = item.name
+              break 
+            }
+            throw e
+          }
 
           // TODO: const faceAndRef = goal.getFaceAndRef(bot.entity.position.offset(0, 1.6, 0))
           const faceAndRef = goal.getFaceAndRef(bot.entity.position.floored().offset(0.5, 1.6, 0.5))
@@ -103,15 +122,22 @@ function inject (bot) {
           if (block.stateId !== action.state) {
             console.log('expected', properties)
             console.log('got', block.getProperties())
+          } else {
+            build.removeAction(action)
           }
         } else if (action.type === 'dig') {
-          bot.pathfinder.setGoal(goals.Goal)
+          await bot.pathfinder.goto(goals.Goal)
+          build.removeAction(action)
         }
       } catch (e) {
         console.log(e)
       }
+    }
 
-      build.removeAction(action)
+    if (errorNoBlocks) {
+      bot.chat('Failed to build no blocks left ' + errorNoBlocks)
+    } else {
+      bot.chat('Finished building')
     }
   }
 }
