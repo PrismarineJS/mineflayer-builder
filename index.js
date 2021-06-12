@@ -24,6 +24,8 @@ function inject (bot) {
     if (bot.inventory.items().length > 30) {
       bot.chat('/clear')
       await wait(1000)
+      const slot = bot.inventory.firstEmptyInventorySlot()
+      await bot.creative.setInventorySlot(slot !== null ? slot : 36, new Item(mcData.itemsByName.dirt.id, 1))
     }
     if (!bot.inventory.items().find(x => x.type === id)) {
       const slot = bot.inventory.firstEmptyInventorySlot()
@@ -46,8 +48,10 @@ function inject (bot) {
         break
       }
       actions.sort((a, b) => {
-        const dA = a.pos.offset(0.5, 0.5, 0.5).distanceSquared(bot.entity.position)
-        const dB = b.pos.offset(0.5, 0.5, 0.5).distanceSquared(bot.entity.position)
+        let dA = a.pos.offset(0.5, 0.5, 0.5).distanceSquared(bot.entity.position)
+        dA += (a.pos.y - bot.entity.position.y) * 100
+        let dB = b.pos.offset(0.5, 0.5, 0.5).distanceSquared(bot.entity.position)
+        dB += (b.pos.y - bot.entity.position.y) * 100
         return dA - dB
       })
       const action = actions[0]
@@ -100,6 +104,8 @@ function inject (bot) {
             console.log('expected', properties)
             console.log('got', block.getProperties())
           }
+        } else if (action.type === 'dig') {
+          bot.pathfinder.setGoal(goals.Goal)
         }
       } catch (e) {
         console.log(e)
