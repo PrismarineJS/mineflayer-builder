@@ -2,7 +2,7 @@ const path = require('path')
 const fs = require('fs').promises
 const { builder, Build } = require('mineflayer-builder')
 const { Schematic } = require('prismarine-schematic')
-const { pathfinder } = require('../mineflayer-pathfinder')
+const { pathfinder } = require('mineflayer-pathfinder')
 const mineflayer = require('mineflayer')
 const mineflayerViewer = require('prismarine-viewer').mineflayer
 
