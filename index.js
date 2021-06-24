@@ -70,7 +70,7 @@ function inject (bot) {
 
   // /fill ~-20 ~ ~-20 ~20 ~10 ~20 minecraft:air
 
-  bot.builder.build = async (build) => {
+  bot.builder.build = async (build, noMaterialCallback) => {
     let errorNoBlocks
     bot.builder.currentBuild = build
 
@@ -126,8 +126,16 @@ function inject (bot) {
             await equipItem(item.id) // equip item after pathfinder
           } catch (e) {
             if (e.message === 'no_blocks') {
-              errorNoBlocks = item.name
-              break 
+              if (noMaterialCallback) {
+                const p = new Promise((resolve, reject) => {
+                  noMaterialCallback(item, resolve, reject)
+                })
+                await p
+                continue
+              } else {
+                errorNoBlocks = item.name
+                break 
+              }
             }
             throw e
           }

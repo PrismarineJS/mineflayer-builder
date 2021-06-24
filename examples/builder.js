@@ -64,7 +64,12 @@ async function build (name) {
   const at = bot.entity.position.floored()
   bot.chat('Building at ', at)
   const build = new Build(schematic, bot.world, at)
-  bot.builder.build(build)
+  bot.builder.build(build, noMaterial)
+}
+
+async function noMaterial (item, resolve, reject) {
+  console.info('Building interrupted missing', item?.name)
+  reject()
 }
 
 async function start () {
