@@ -6,7 +6,6 @@ const { pathfinder } = require('../mineflayer-pathfinder')
 const mineflayer = require('mineflayer')
 const mineflayerViewer = require('prismarine-viewer').mineflayer
 
-let schematic
 
 const bot = mineflayer.createBot({
   host: process.argv[2] || 'localhost',
@@ -21,7 +20,6 @@ bot.loadPlugin(builder)
 function wait (ms) { return new Promise(resolve => setTimeout(resolve, ms)) }
 
 bot.once('spawn', async () => {
-  console.info(bot.entity.height)
   mineflayerViewer(bot, { port: 3000 })
 
   bot.on('path_update', (r) => {
@@ -32,7 +30,6 @@ bot.once('spawn', async () => {
     bot.viewer.drawLine('path', path, 0xff00ff)
   })
 
-  schematic = await Schematic.read(await fs.readFile(path.resolve(__dirname, '../schematics/obi.schem')), bot.version)
   while (!bot.entity.onGround) {
     await wait(100)
   }
@@ -43,15 +40,27 @@ bot.once('spawn', async () => {
   })
   bot.on('chat', async (username, message) => {
     console.info(username, message)
-    if (message === 'start') {
-      start()
-    } else if (message === 'build') {
-      build()
+    if (message.startsWith('build')) {
+      const [, schematicName] = message.split(' ')
+      build(schematicName)
+    } else if (message === 'stop') {
+      bot.builder.stop()
+    } else if (message === 'pause') {
+      bot.builder.pause()
+    } else if (message === 'continue') {
+      bot.builder.continue()
     }
   })
 })
 
-async function build () {
+async function build (name) {
+  const schematicName = !name.endsWith('.schem') ? name + '.schem' : name
+  const filePath = path.resolve(__dirname, '../schematics/' + schematicName)
+  if (!fileExists(filePath)) {
+    bot.chat(`File ${schematicName} not found`)
+    return
+  }
+  const schematic = await Schematic.read(await fs.readFile(filePath), bot.version)
   const at = bot.entity.position.floored()
   bot.chat('Building at ', at)
   const build = new Build(schematic, bot.world, at)
@@ -60,19 +69,24 @@ async function build () {
 
 async function start () {
   bot.chat('/clear')
-  await sleep(1000)
+  await wait(1000)
   bot.chat('/give builder dirt')
-  await sleep(1000)
+  await wait(1000)
   bot.chat('/fill 187 4 122 209 30 101 air')
-  await sleep(1000)
+  await wait(1000)
   bot.chat('/tp 197 4 121')
-  await sleep(1000)
+  await wait(1000)
   const at = bot.entity.position.floored()
   console.log('Building at ', at)
   const build = new Build(schematic, bot.world, at)
   bot.builder.build(build)
 }
 
-function sleep (ms) {
-  return new Promise(resolve => setTimeout(resolve, ms))
+async function fileExists (path) {  
+  try {
+    await fs.promises.access(path)
+    return true
+  } catch {
+    return false
+  }
 }

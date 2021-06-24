@@ -9,18 +9,22 @@ function inject (bot) {
     throw new Error('pathfinder must be loaded before builder')
   }
 
+  let interruptBuilding = false
+
   const mcData = require('minecraft-data')(bot.version)
   const Item = require('prismarine-item')(bot.version)
 
   const movements = new Movements(bot, mcData)
   // movements.canDig = false
   movements.digCost = 10
-  movements.maxDropDown = 256
+  movements.maxDropDown = 3
   bot.pathfinder.searchRadius = 10
 
   bot.builder = {}
 
-  async function OldequipItem (id) {
+  bot.builder.currentBuild = null
+
+  async function equipCreative (id) {
     if (bot.inventory.items().length > 30) {
       bot.chat('/clear')
       await wait(1000)
@@ -46,12 +50,35 @@ function inject (bot) {
 
   bot.builder.equipItem = equipItem
 
+  bot.builder.stop = function () {
+    console.log('Stopped building')
+    interruptBuilding = true
+    bot.builder.currentBuild = null
+    bot.pathfinder.setGoal(null)
+  }
+
+  bot.builder.pause = function () {
+    console.log('Paused building')
+    interruptBuilding = true
+    bot.pathfinder.setGoal(null)
+  }
+
+  bot.builder.continue = () => {
+    if (!bot.builder.currentBuild) return console.log('Nothing to continue building')
+    bot.builder.build(bot.builder.currentBuild)
+  }
+
   // /fill ~-20 ~ ~-20 ~20 ~10 ~20 minecraft:air
 
   bot.builder.build = async (build) => {
     let errorNoBlocks
+    bot.builder.currentBuild = build
 
     while (build.actions.length > 0) {
+      if (interruptBuilding) {
+        interruptBuilding = false
+        return
+      }
       const actions = build.getAvailableActions()
       console.log(`${actions.length} available actions`)
       if (actions.length === 0) {
@@ -130,7 +157,12 @@ function inject (bot) {
           build.removeAction(action)
         }
       } catch (e) {
-        console.log(e)
+        if (e?.name === 'NoPath') {
+          build.removeAction(action)
+          console.info('Skipping unreachable action', action)
+        } else {
+          console.log(e.name, e)
+        }
       }
     }
 
@@ -139,6 +171,8 @@ function inject (bot) {
     } else {
       bot.chat('Finished building')
     }
+    interruptBuilding = false
+    bot.builder.currentBuild = null
   }
 }
 
