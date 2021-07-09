@@ -114,7 +114,9 @@ function inject (bot) {
             faces,
             facing: facing,
             facing3D: is3D,
-            half
+            half,
+            range: 3,
+            LOS: false
           })
           if (!goal.isEnd(bot.entity.position.floored())) {
             console.log('pathfinding')
@@ -130,7 +132,12 @@ function inject (bot) {
                 const p = new Promise((resolve, reject) => {
                   noMaterialCallback(item, resolve, reject)
                 })
-                await p
+                try {
+                  await p
+                } catch (e) {
+                  errorNoBlocks = item.name
+                  break
+                }
                 continue
               } else {
                 errorNoBlocks = item.name
@@ -168,8 +175,11 @@ function inject (bot) {
         if (e?.name === 'NoPath') {
           build.removeAction(action)
           console.info('Skipping unreachable action', action)
+        } else if (e && e.name === 'cancel') {
+          console.info('Canceling build no materials')
+          break
         } else {
-          console.log(e.name, e)
+          console.log(e?.name, e)
         }
       }
     }
@@ -178,6 +188,9 @@ function inject (bot) {
       bot.chat('Failed to build no blocks left ' + errorNoBlocks)
     } else {
       bot.chat('Finished building')
+      setTimeout(() => {
+        bot.emit('builder_finished')
+      }, 0)
     }
     interruptBuilding = false
     bot.builder.currentBuild = null
