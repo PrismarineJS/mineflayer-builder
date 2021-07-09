@@ -1,4 +1,4 @@
-const { goals, Movements } = require('./mineflayer-pathfinder')
+const { goals, Movements } = require('mineflayer-pathfinder')
 
 const interactable = require('./lib/interactable.json')
 
