@@ -40,6 +40,7 @@ function inject (bot) {
   }
 
   async function equipItem (id) {
+    if (bot.heldItem?.type === id) return
     await bot.setQuickBarSlot(5)
     const item = bot.inventory.findInventoryItem(id, null)
     if (!item) {
