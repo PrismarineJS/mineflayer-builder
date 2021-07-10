@@ -160,10 +160,12 @@ function inject (bot) {
           await bot._placeBlockWithOptions(refBlock, faceAndRef.face.scaled(-1), { half, delta })
           if (sneak) bot.setControlState('sneak', false)
 
-          const block = bot.world.getBlock(action.pos)
-          if (block.stateId !== action.state) {
+          // const block = bot.world.getBlock(action.pos)
+          const worldState = bot.world.getBlockStateId(action.pos)
+          // Does not work for 1.12 as blocks dont have the stateId property
+          if (worldState !== action.state) {
             console.log('expected', properties)
-            console.log('got', block.getProperties())
+            console.log('got', worldState)
           } 
           build.removeAction(action)
         } else if (action.type === 'dig') {
@@ -178,6 +180,9 @@ function inject (bot) {
         } else if (e && e.name === 'cancel') {
           console.info('Canceling build no materials')
           break
+        } else if (e?.message.startsWith('No block has been placed')) {
+          console.info('Block placement failed')
+          console.error(e)
         } else {
           console.log(e?.name, e)
         }
