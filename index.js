@@ -164,16 +164,16 @@ function inject (bot) {
           if (block.stateId !== action.state) {
             console.log('expected', properties)
             console.log('got', block.getProperties())
-          } else {
-            build.removeAction(action)
-          }
+          } 
+          build.removeAction(action)
         } else if (action.type === 'dig') {
           await bot.pathfinder.goto(goals.Goal)
+          build.removeAction(action)
+        } else {
           build.removeAction(action)
         }
       } catch (e) {
         if (e?.name === 'NoPath') {
-          build.removeAction(action)
           console.info('Skipping unreachable action', action)
         } else if (e && e.name === 'cancel') {
           console.info('Canceling build no materials')
@@ -181,6 +181,7 @@ function inject (bot) {
         } else {
           console.log(e?.name, e)
         }
+        build.removeAction(action)
       }
     }
 
