@@ -49,6 +49,28 @@ function inject (bot) {
     await bot.equip(item.type, 'hand')
   }
 
+  async function materialCallback(item, noMaterialCallback) {
+    if (noMaterialCallback && typeof noMaterialCallback === 'function') {
+      const p = new Promise((resolve, reject) => {
+        try {
+          noMaterialCallback(item, (data) => {
+            resolve(data)
+          }, (error) => {
+            reject(error)
+          })
+        } catch (e) {
+          reject(e)
+        }
+      })
+      try {
+        await p
+      } catch (e) {
+        throw new Error(item.name)
+      }
+    } 
+    throw new Error(item.name)
+  }
+
   bot.builder.equipItem = equipItem
 
   bot.builder.stop = function () {
@@ -81,7 +103,7 @@ function inject (bot) {
         return
       }
       const actions = build.getAvailableActions()
-      console.log(`${actions.length} available actions`)
+      // console.log(`${actions.length} available actions`)
       if (actions.length === 0) {
         console.log('No actions to perform')
         break
@@ -94,12 +116,12 @@ function inject (bot) {
         return dA - dB
       })
       const action = actions[0]
-      console.log('action', action)
+      // console.log('action', action)
 
       try {
         if (action.type === 'place') {
           const item = build.getItemForState(action.state)
-          console.log('Selecting ' + item.displayName)
+          // console.log('Selecting ' + item.displayName)
 
           const properties = build.properties[action.state]
           const half = properties.half ? properties.half : properties.type
@@ -107,7 +129,7 @@ function inject (bot) {
           const faces = build.getPossibleDirections(action.state, action.pos)
           for (const face of faces) {
             const block = bot.blockAt(action.pos.plus(face))
-            console.log(face, action.pos.plus(face), block.name)
+            // console.log(face, action.pos.plus(face), block.name)
           }
 
           const { facing, is3D } = build.getFacing(action.state, properties.facing)
@@ -120,7 +142,7 @@ function inject (bot) {
             LOS: false
           })
           if (!goal.isEnd(bot.entity.position.floored())) {
-            console.log('pathfinding')
+            // console.log('pathfinding')
             bot.pathfinder.setMovements(movements)
             await bot.pathfinder.goto(goal)
           }
@@ -129,21 +151,13 @@ function inject (bot) {
             await equipItem(item.id) // equip item after pathfinder
           } catch (e) {
             if (e.message === 'no_blocks') {
-              if (noMaterialCallback) {
-                const p = new Promise((resolve, reject) => {
-                  noMaterialCallback(item, resolve, reject)
-                })
-                try {
-                  await p
-                } catch (e) {
-                  errorNoBlocks = item.name
-                  break
-                }
-                continue
-              } else {
-                errorNoBlocks = item.name
-                break 
+              try {
+                await materialCallback(item, noMaterialCallback)
+              } catch (e) {
+                console.info('Throwing error no material')
+                throw Error('cancel')
               }
+              continue
             }
             throw e
           }
@@ -178,12 +192,13 @@ function inject (bot) {
       } catch (e) {
         if (e?.name === 'NoPath') {
           console.info('Skipping unreachable action', action)
-        } else if (e && e.name === 'cancel') {
+        } else if (e && (e.name === 'cancel' || e.message === 'cancel')) {
           console.info('Canceling build no materials')
           break
         } else if (e?.message.startsWith('No block has been placed')) {
           console.info('Block placement failed')
           console.error(e)
+          continue
         } else {
           console.log(e?.name, e)
         }
@@ -192,14 +207,15 @@ function inject (bot) {
     }
 
     if (errorNoBlocks) {
-      bot.chat('Failed to build no blocks left ' + errorNoBlocks)
+      let message = 'Failed to build no blocks left ' + errorNoBlocks
+      bot.chat(message)
+      bot.emit('builder_cancel', message)
     } else {
       bot.chat('Finished building')
       setTimeout(() => {
         bot.emit('builder_finished')
       }, 0)
     }
-    interruptBuilding = false
     bot.builder.currentBuild = null
   }
 }
