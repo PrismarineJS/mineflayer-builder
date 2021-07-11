@@ -41,7 +41,6 @@ function inject (bot) {
 
   async function equipItem (id) {
     if (bot.heldItem?.type === id) return
-    await bot.setQuickBarSlot(5)
     const item = bot.inventory.findInventoryItem(id, null)
     if (!item) {
       throw Error('no_blocks')
@@ -49,7 +48,7 @@ function inject (bot) {
     await bot.equip(item.type, 'hand')
   }
 
-  async function materialCallback(item, noMaterialCallback) {
+  async function materialCallback (item, noMaterialCallback) {
     if (noMaterialCallback && typeof noMaterialCallback === 'function') {
       const p = new Promise((resolve, reject) => {
         try {
@@ -67,7 +66,7 @@ function inject (bot) {
       } catch (e) {
         throw new Error(item.name)
       }
-    } 
+    }
     throw new Error(item.name)
   }
 
@@ -104,7 +103,7 @@ function inject (bot) {
         return
       }
       const actions = build.getAvailableActions()
-      // console.log(`${actions.length} available actions`)
+      console.log(`${actions.length} available actions`)
       if (actions.length === 0) {
         console.log('No actions to perform')
         break
@@ -117,12 +116,12 @@ function inject (bot) {
         return dA - dB
       })
       const action = actions[0]
-      // console.log('action', action)
+      console.log('action', action)
 
       try {
         if (action.type === 'place') {
           const item = build.getItemForState(action.state)
-          // console.log('Selecting ' + item.displayName)
+          console.log('Selecting ' + item.displayName)
 
           const properties = build.properties[action.state]
           const half = properties.half ? properties.half : properties.type
@@ -130,7 +129,7 @@ function inject (bot) {
           const faces = build.getPossibleDirections(action.state, action.pos)
           for (const face of faces) {
             const block = bot.blockAt(action.pos.plus(face))
-            // console.log(face, action.pos.plus(face), block.name)
+            console.log(face, action.pos.plus(face), block.name)
           }
 
           const { facing, is3D } = build.getFacing(action.state, properties.facing)
@@ -143,9 +142,10 @@ function inject (bot) {
             LOS: false
           })
           if (!goal.isEnd(bot.entity.position.floored())) {
-            // console.log('pathfinding')
+            console.log('pathfinding')
             bot.pathfinder.setMovements(movements)
             await bot.pathfinder.goto(goal)
+            console.log('finished pathing')
           }
 
           try {
@@ -182,7 +182,7 @@ function inject (bot) {
           if (worldState !== action.state) {
             console.log('expected', properties)
             console.log('got', worldState)
-          } 
+          }
           build.removeAction(action)
         } else if (action.type === 'dig') {
           await bot.pathfinder.goto(goals.Goal)
@@ -208,7 +208,7 @@ function inject (bot) {
     }
 
     if (errorNoBlocks) {
-      let message = 'Failed to build no blocks left ' + errorNoBlocks
+      const message = 'Failed to build no blocks left ' + errorNoBlocks
       bot.chat(message)
       bot.emit('builder_cancel', message)
     } else {
