@@ -189,7 +189,7 @@ function inject (bot) {
           }
           build.removeAction(action)
         } else if (action.type === 'dig') {
-          await bot.pathfinder.goto(goals.Goal)
+          await bot.pathfinder.goto(new goals.Goal(action.pos.x, action.pos.y, action.pos))
           build.removeAction(action)
         } else {
           build.removeAction(action)
