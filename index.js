@@ -92,7 +92,7 @@ function inject (bot) {
 
   // /fill ~-20 ~ ~-20 ~20 ~10 ~20 minecraft:air
 
-  bot.builder.build = async (build, noMaterialCallback, placementOptions) => {
+  bot.builder.build = async (build, noMaterialCallback, placementOptions = {}) => {
     let errorNoBlocks
     bot.builder.currentBuild = build
 
