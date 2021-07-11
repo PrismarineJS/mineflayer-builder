@@ -96,6 +96,7 @@ function inject (bot) {
   bot.builder.build = async (build, noMaterialCallback) => {
     let errorNoBlocks
     bot.builder.currentBuild = build
+    interruptBuilding = false
 
     while (build.actions.length > 0) {
       if (interruptBuilding) {
