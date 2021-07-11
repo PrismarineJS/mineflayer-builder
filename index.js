@@ -92,9 +92,13 @@ function inject (bot) {
 
   // /fill ~-20 ~ ~-20 ~20 ~10 ~20 minecraft:air
 
-  bot.builder.build = async (build, noMaterialCallback) => {
+  bot.builder.build = async (build, noMaterialCallback, placementOptions) => {
     let errorNoBlocks
     bot.builder.currentBuild = build
+
+    const placementRange = placementOptions.range || 3
+    const placementLOS = 'LOS' in placementOptions ? placementOptions.LOS : true
+
     interruptBuilding = false
 
     while (build.actions.length > 0) {
@@ -138,8 +142,8 @@ function inject (bot) {
             facing: facing,
             facing3D: is3D,
             half,
-            range: 3,
-            LOS: false
+            range: placementRange,
+            LOS: placementLOS
           })
           if (!goal.isEnd(bot.entity.position.floored())) {
             console.log('pathfinding')
