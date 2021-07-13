@@ -92,12 +92,13 @@ function inject (bot) {
 
   // /fill ~-20 ~ ~-20 ~20 ~10 ~20 minecraft:air
 
-  bot.builder.build = async (build, noMaterialCallback, placementOptions = {}) => {
+  bot.builder.build = async (build, noMaterialCallback, options = {}) => {
     let errorNoBlocks
     bot.builder.currentBuild = build
 
-    const placementRange = placementOptions.range || 3
-    const placementLOS = 'LOS' in placementOptions ? placementOptions.LOS : true
+    const placementRange = options.range || 3
+    const placementLOS = 'LOS' in options ? options.LOS : true
+    const materialMin = options.materialMin || 0
 
     interruptBuilding = false
 
@@ -153,6 +154,8 @@ function inject (bot) {
           }
 
           try {
+            const amount = bot.inventory.count(id)
+            if (amount <= materialMin) throw Error('no_blocks')
             await equipItem(item.id) // equip item after pathfinder
           } catch (e) {
             if (e.message === 'no_blocks') {
