@@ -2,7 +2,7 @@ const { goals, Movements } = require('mineflayer-pathfinder')
 
 const interactable = require('./lib/interactable.json')
 
-function wait (ms) { return new Promise(resolve => setTimeout(resolve, ms)) }
+// function wait (ms) { return new Promise(resolve => setTimeout(resolve, ms)) }
 
 function inject (bot) {
   if (!bot.pathfinder) {
@@ -12,7 +12,7 @@ function inject (bot) {
   let interruptBuilding = false
 
   const mcData = require('minecraft-data')(bot.version)
-  const Item = require('prismarine-item')(bot.version)
+  // const Item = require('prismarine-item')(bot.version)
 
   const movements = new Movements(bot, mcData)
   // movements.canDig = false
@@ -24,20 +24,20 @@ function inject (bot) {
 
   bot.builder.currentBuild = null
 
-  async function equipCreative (id) {
-    if (bot.inventory.items().length > 30) {
-      bot.chat('/clear')
-      await wait(1000)
-      const slot = bot.inventory.firstEmptyInventorySlot()
-      await bot.creative.setInventorySlot(slot !== null ? slot : 36, new Item(mcData.itemsByName.dirt.id, 1))
-    }
-    if (!bot.inventory.items().find(x => x.type === id)) {
-      const slot = bot.inventory.firstEmptyInventorySlot()
-      await bot.creative.setInventorySlot(slot !== null ? slot : 36, new Item(id, 1))
-    }
-    const item = bot.inventory.items().find(x => x.type === id)
-    await bot.equip(item, 'hand')
-  }
+  // async function equipCreative (id) {
+  //   if (bot.inventory.items().length > 30) {
+  //     bot.chat('/clear')
+  //     await wait(1000)
+  //     const slot = bot.inventory.firstEmptyInventorySlot()
+  //     await bot.creative.setInventorySlot(slot !== null ? slot : 36, new Item(mcData.itemsByName.dirt.id, 1))
+  //   }
+  //   if (!bot.inventory.items().find(x => x.type === id)) {
+  //     const slot = bot.inventory.firstEmptyInventorySlot()
+  //     await bot.creative.setInventorySlot(slot !== null ? slot : 36, new Item(id, 1))
+  //   }
+  //   const item = bot.inventory.items().find(x => x.type === id)
+  //   await bot.equip(item, 'hand')
+  // }
 
   async function equipItem (id) {
     if (bot.heldItem?.type === id) return
@@ -154,7 +154,7 @@ function inject (bot) {
           }
 
           try {
-            const amount = bot.inventory.count(id)
+            const amount = bot.inventory.count(item.id)
             if (amount <= materialMin) throw Error('no_blocks')
             await equipItem(item.id) // equip item after pathfinder
           } catch (e) {

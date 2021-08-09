@@ -6,7 +6,6 @@ const { pathfinder } = require('../mineflayer-pathfinder')
 const mineflayer = require('mineflayer')
 const mineflayerViewer = require('prismarine-viewer').mineflayer
 
-
 const bot = mineflayer.createBot({
   host: process.argv[2] || 'localhost',
   port: parseInt(process.argv[3]) || 25565,
@@ -33,11 +32,11 @@ bot.once('spawn', async () => {
   while (!bot.entity.onGround) {
     await wait(100)
   }
-  bot.on('messagestr', (message, messagePosition, jsonMsg) => {
-    if (message.includes('start')) {
-      start()
-    } 
-  })
+  // bot.on('messagestr', (message, messagePosition, jsonMsg) => {
+  //   if (message.includes('start')) {
+  //     start()
+  //   }
+  // })
   bot.on('chat', async (username, message) => {
     console.info(username, message)
     if (message.startsWith('build')) {
@@ -72,22 +71,22 @@ async function noMaterial (item, resolve, reject) {
   reject()
 }
 
-async function start () {
-  bot.chat('/clear')
-  await wait(1000)
-  bot.chat('/give builder dirt')
-  await wait(1000)
-  bot.chat('/fill 187 4 122 209 30 101 air')
-  await wait(1000)
-  bot.chat('/tp 197 4 121')
-  await wait(1000)
-  const at = bot.entity.position.floored()
-  console.log('Building at ', at)
-  const build = new Build(schematic, bot.world, at)
-  bot.builder.build(build)
-}
+// async function start () {
+//   bot.chat('/clear')
+//   await wait(1000)
+//   bot.chat('/give builder dirt')
+//   await wait(1000)
+//   bot.chat('/fill 187 4 122 209 30 101 air')
+//   await wait(1000)
+//   bot.chat('/tp 197 4 121')
+//   await wait(1000)
+//   const at = bot.entity.position.floored()
+//   console.log('Building at ', at)
+//   const build = new Build(schematic, bot.world, at)
+//   bot.builder.build(build)
+// }
 
-async function fileExists (path) {  
+async function fileExists (path) {
   try {
     await fs.promises.access(path)
     return true
