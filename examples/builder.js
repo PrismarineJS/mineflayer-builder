@@ -32,16 +32,12 @@ bot.once('spawn', async () => {
   while (!bot.entity.onGround) {
     await wait(100)
   }
-  // bot.on('messagestr', (message, messagePosition, jsonMsg) => {
-  //   if (message.includes('start')) {
-  //     start()
-  //   }
-  // })
+
   bot.on('chat', async (username, message) => {
-    console.info(username, message)
     if (message.startsWith('build')) {
-      const [, schematicName] = message.split(' ')
-      build(schematicName)
+      let [, schematicName] = message.split(' ')
+      if (!schematicName) schematicName = 'smallhouse1.schem'
+      buildSchematic(schematicName)
     } else if (message === 'stop') {
       bot.builder.stop()
     } else if (message === 'pause') {
@@ -50,9 +46,25 @@ bot.once('spawn', async () => {
       bot.builder.continue()
     }
   })
+
+  bot.on('builder:missing_blocks', async item => {
+    console.info('Missing', item)
+    if (bot.inventory.emptySlotCount() === 0) {
+      bot.chat('/clear')
+      await new Promise((resolve) => setTimeout(resolve, 200))
+    }
+    bot.chat('Missing ' + item?.displayName)
+    bot.chat(`/give ${bot.username} ${item.name} 64`)
+    await new Promise((resolve) => setTimeout(resolve, 500))
+    bot.builder.continue()
+  })
+
+  bot.on('builder:no_actions_left', () => {
+    bot.chat('No more actions left may be finished or not')
+  })
 })
 
-async function build (name) {
+async function buildSchematic (name) {
   const schematicName = !name.endsWith('.schem') ? name + '.schem' : name
   const filePath = path.resolve(__dirname, '../schematics/' + schematicName)
   if (!fileExists(filePath)) {
@@ -61,30 +73,11 @@ async function build (name) {
   }
   const schematic = await Schematic.read(await fs.readFile(filePath), bot.version)
   const at = bot.entity.position.floored()
-  bot.chat('Building at ', at)
+  at.offset(-1, 0, -1)
+  bot.chat('Building at ' + at)
   const build = new Build(schematic, bot.world, at)
-  bot.builder.build(build, noMaterial)
+  bot.builder.build(build)
 }
-
-async function noMaterial (item, resolve, reject) {
-  console.info('Building interrupted missing', item?.name)
-  reject()
-}
-
-// async function start () {
-//   bot.chat('/clear')
-//   await wait(1000)
-//   bot.chat('/give builder dirt')
-//   await wait(1000)
-//   bot.chat('/fill 187 4 122 209 30 101 air')
-//   await wait(1000)
-//   bot.chat('/tp 197 4 121')
-//   await wait(1000)
-//   const at = bot.entity.position.floored()
-//   console.log('Building at ', at)
-//   const build = new Build(schematic, bot.world, at)
-//   bot.builder.build(build)
-// }
 
 async function fileExists (path) {
   try {

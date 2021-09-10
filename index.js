@@ -48,28 +48,6 @@ function inject (bot) {
     await bot.equip(item.type, 'hand')
   }
 
-  async function materialCallback (item, noMaterialCallback) {
-    if (noMaterialCallback && typeof noMaterialCallback === 'function') {
-      const p = new Promise((resolve, reject) => {
-        try {
-          noMaterialCallback(item, (data) => {
-            resolve(data)
-          }, (error) => {
-            reject(error)
-          })
-        } catch (e) {
-          reject(e)
-        }
-      })
-      try {
-        await p
-      } catch (e) {
-        throw new Error(item.name)
-      }
-    }
-    throw new Error(item.name)
-  }
-
   bot.builder.equipItem = equipItem
 
   bot.builder.stop = function () {
@@ -87,18 +65,29 @@ function inject (bot) {
 
   bot.builder.continue = () => {
     if (!bot.builder.currentBuild) return console.log('Nothing to continue building')
+    bot.builder.currentBuild.updateActions()
     bot.builder.build(bot.builder.currentBuild)
+  }
+
+  const defaultSort = (a, b, bot) => {
+    // Build in layers
+    if (a.pos.y !== b.pos.y) {
+      return a.pos.y > b.pos.y ? 1 : -1
+    } else {
+      const p = bot.entity.position.offset(-0.5, 0, -0.5)
+      return p.distanceTo(a.pos) > p.distanceTo(b.pos) ? 1 : -1
+    }
   }
 
   // /fill ~-20 ~ ~-20 ~20 ~10 ~20 minecraft:air
 
-  bot.builder.build = async (build, noMaterialCallback, options = {}) => {
-    let errorNoBlocks
+  bot.builder.build = async (build, options = {}) => {
     bot.builder.currentBuild = build
 
     const placementRange = options.range || 3
     const placementLOS = 'LOS' in options ? options.LOS : true
     const materialMin = options.materialMin || 0
+    const buildOrderSort = options.buildOrderSort || defaultSort
 
     interruptBuilding = false
 
@@ -113,13 +102,7 @@ function inject (bot) {
         console.log('No actions to perform')
         break
       }
-      actions.sort((a, b) => {
-        let dA = a.pos.offset(0.5, 0.5, 0.5).distanceSquared(bot.entity.position)
-        dA += (a.pos.y - bot.entity.position.y) * 100
-        let dB = b.pos.offset(0.5, 0.5, 0.5).distanceSquared(bot.entity.position)
-        dB += (b.pos.y - bot.entity.position.y) * 100
-        return dA - dB
-      })
+      actions.sort((a, b) => buildOrderSort(a, b, bot))
       const action = actions[0]
       console.log('action', action)
 
@@ -155,19 +138,15 @@ function inject (bot) {
 
           try {
             const amount = bot.inventory.count(item.id)
-            if (amount <= materialMin) throw Error('no_blocks')
+            if (amount <= materialMin) {
+              bot.emit('builder:missing_blocks', item)
+              bot.builder.pause()
+              return
+            }
             await equipItem(item.id) // equip item after pathfinder
           } catch (e) {
-            if (e.message === 'no_blocks') {
-              try {
-                await materialCallback(item, noMaterialCallback)
-              } catch (e) {
-                console.info('Throwing error no material')
-                throw Error('cancel')
-              }
-              continue
-            }
-            throw e
+            console.warn('Equipping error', e)
+            throw Error('cancel')
           }
 
           // TODO: const faceAndRef = goal.getFaceAndRef(bot.entity.position.offset(0, 1.6, 0))
@@ -200,30 +179,22 @@ function inject (bot) {
       } catch (e) {
         if (e?.name === 'NoPath') {
           console.info('Skipping unreachable action', action)
-        } else if (e && (e.name === 'cancel' || e.message === 'cancel')) {
-          console.info('Canceling build no materials')
+        } else if (e?.name === 'cancel' || e?.message === 'cancel') {
+          console.info('Canceling build error')
           break
         } else if (e?.message.startsWith('No block has been placed')) {
           console.info('Block placement failed')
           console.error(e)
           continue
+        } else if (e?.name === 'GoalChanged') {
+          return
         } else {
           console.log(e?.name, e)
         }
         build.removeAction(action)
       }
     }
-
-    if (errorNoBlocks) {
-      const message = 'Failed to build no blocks left ' + errorNoBlocks
-      bot.chat(message)
-      bot.emit('builder_cancel', message)
-    } else {
-      bot.chat('Finished building')
-      setTimeout(() => {
-        bot.emit('builder_finished')
-      }, 0)
-    }
+    bot.emit('builder:no_actions_left')
     bot.builder.currentBuild = null
   }
 }
