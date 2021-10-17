@@ -51,6 +51,8 @@ bot.once('spawn', async () => {
     console.info('Missing', item)
     if (bot.inventory.emptySlotCount() === 0) {
       bot.chat('/clear')
+      bot.chat(`/give ${bot.username} dirt 64`)
+      bot.chat(`/give ${bot.username} diamond_pickaxe`)
       await new Promise((resolve) => setTimeout(resolve, 200))
     }
     bot.chat('Missing ' + item?.displayName)
@@ -76,6 +78,9 @@ async function buildSchematic (name) {
   at.offset(-1, 0, -1)
   bot.chat('Building at ' + at)
   const build = new Build(schematic, bot.world, at)
+  build.breakNoneAir = true
+  build.breakWrongBlocks = true
+  build.updateActions()
   bot.builder.build(build)
 }
 

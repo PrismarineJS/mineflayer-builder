@@ -1,9 +1,58 @@
 const { goals, Movements } = require('mineflayer-pathfinder')
+const wait = require('util').promisify(setTimeout)
+
+function awaitWithTimeout(func, ms, message) {
+  return new Promise((resolve, reject) => {
+    let timer = setTimeout(() => {
+      cleanup()
+      reject(message ? message : 'timeout')
+    }, ms)
+    let timerCleared = false
+    const cleanup = () => {
+      timerCleared = true
+      clearInterval(timer)
+    }
+    func
+      .then((arg) => {
+        if (timerCleared) {
+          console.info('Functon', func, 'resolved after timeout')
+          return
+        }
+        cleanup()
+        resolve(arg)
+      })
+      .catch((error) => {
+        cleanup()
+        reject(message ? message : error)
+      })
+  })
+  
+}
 
 const interactable = require('./lib/interactable.json')
 
 // function wait (ms) { return new Promise(resolve => setTimeout(resolve, ms)) }
 
+/**
+ * @typedef builder
+ * @property {builderProperties} builder
+ */
+
+/**
+ * @typedef builderProperties
+ * @property {any} currentBuild
+ * @property {function} equipItem
+ */
+
+/**
+ * @typedef pathfinder
+ * @property {import('mineflayer-pathfinder').Pathfinder} pathfinder
+ */
+
+/**
+ * 
+ * @param {import('mineflayer').Bot & builder & pathfinder} bot 
+ */
 function inject (bot) {
   if (!bot.pathfinder) {
     throw new Error('pathfinder must be loaded before builder')
@@ -81,8 +130,20 @@ function inject (bot) {
 
   // /fill ~-20 ~ ~-20 ~20 ~10 ~20 minecraft:air
 
+  /**
+   * 
+   * @param {import('./lib/Build')} build 
+   * @param {{range?: number, LOS?: boolean, materialMin?: number, buildOrderSort?: function}} options 
+   * @returns 
+   */
   bot.builder.build = async (build, options = {}) => {
     bot.builder.currentBuild = build
+    const mcData = require('minecraft-data')(bot.version)
+
+    const replaceable = new Set()
+    replaceable.add(mcData.blocksByName.air.id)
+    if (mcData.blocksByName.cave_air) replaceable.add(mcData.blocksByName.cave_air.id)
+    if (mcData.blocksByName.void_air) replaceable.add(mcData.blocksByName.void_air.id)
 
     const placementRange = options.range || 3
     const placementLOS = 'LOS' in options ? options.LOS : true
@@ -109,7 +170,13 @@ function inject (bot) {
       try {
         if (action.type === 'place') {
           const item = build.getItemForState(action.state)
-          console.log('Selecting ' + item.displayName)
+          if (!item) {
+            console.warn('No item found for action', action)
+            console.info(build.schematic.getBlock(action.pos.minus(build.at)))
+            build.removeAction(action)
+            continue
+          }
+          console.log('Selecting ' + item?.displayName)
 
           const properties = build.properties[action.state]
           const half = properties.half ? properties.half : properties.type
@@ -132,19 +199,24 @@ function inject (bot) {
           if (!goal.isEnd(bot.entity.position.floored())) {
             console.log('pathfinding')
             bot.pathfinder.setMovements(movements)
-            await bot.pathfinder.goto(goal)
+            await awaitWithTimeout(bot.pathfinder.goto(goal), 1000 * bot.entity.position.distanceTo(action.pos), 'pathfinder_timeout')
+            // await Promise.race([bot.pathfinder.goto(goal), timeout(1000 * bot.entity.position.distanceTo(action.pos), 'pathfinder_timeout')])
             console.log('finished pathing')
           }
 
           try {
             const amount = bot.inventory.count(item.id)
             if (amount <= materialMin) {
-              bot.emit('builder:missing_blocks', item)
+              console.info('Missing blocks', item)
               bot.builder.pause()
+              bot.emit('builder:missing_blocks', item)
               return
             }
-            await equipItem(item.id) // equip item after pathfinder
+            await awaitWithTimeout(equipItem(item.id), 2000, 'equip_timeout')
+            // await Promise.race([equipItem(item.id), timeout(2000, 'equip_timeout')])
+            // await equipItem(item.id) // equip item after pathfinder
           } catch (e) {
+            if (e?.message === 'equip_timeout') throw e
             console.warn('Equipping error', e)
             throw Error('cancel')
           }
@@ -159,7 +231,7 @@ function inject (bot) {
           const sneak = interactable.indexOf(refBlock.name) > 0
           const delta = faceAndRef.to.minus(faceAndRef.ref)
           if (sneak) bot.setControlState('sneak', true)
-          await bot._placeBlockWithOptions(refBlock, faceAndRef.face.scaled(-1), { half, delta })
+          await awaitWithTimeout(bot._placeBlockWithOptions(refBlock, faceAndRef.face.scaled(-1), { half, delta }), 5000, 'place_timeout')
           if (sneak) bot.setControlState('sneak', false)
 
           // const block = bot.world.getBlock(action.pos)
@@ -171,7 +243,13 @@ function inject (bot) {
           }
           build.removeAction(action)
         } else if (action.type === 'dig') {
-          await bot.pathfinder.goto(new goals.Goal(action.pos.x, action.pos.y, action.pos))
+          const wantBlock = mcData.blocksByStateId[action.state]
+          const isBlock = bot.blockAt(action.pos)
+          if (!replaceable.has(isBlock) && isBlock?.name !== wantBlock?.name) {
+            const goal = new goals.GoalBreakBlock(action.pos.x, action.pos.y, action.pos.z, bot)
+            await awaitWithTimeout(bot.pathfinder.goto(goal), 1000 * bot.entity.position.distanceTo(action.pos), 'goal_break_timeout')
+          }
+          await awaitWithTimeout(bot.dig(bot.blockAt(action.pos), true, 'raycast'), 10000, 'dig_timeout')
           build.removeAction(action)
         } else {
           build.removeAction(action)
@@ -180,16 +258,21 @@ function inject (bot) {
         if (e?.name === 'NoPath') {
           console.info('Skipping unreachable action', action)
         } else if (e?.name === 'cancel' || e?.message === 'cancel') {
-          console.info('Canceling build error')
+          console.info('Canceling build error', e)
           break
-        } else if (e?.message.startsWith('No block has been placed')) {
+        } else if (e?.message?.startsWith('No block has been placed')) {
           console.info('Block placement failed')
           console.error(e)
           continue
-        } else if (e?.name === 'GoalChanged') {
+        } else if (e?.message === 'GoalChanged') {
+          console.info('Goal changed error')
           return
+        } else if (e?.message === 'pathfinder_timeout') {
+          bot.pathfinder.setGoal(null)
+          console.warn('Pathfinder timed out')
+          await wait(100)
         } else {
-          console.log(e?.name, e)
+          console.log('Unknown error', e)
         }
         build.removeAction(action)
       }
