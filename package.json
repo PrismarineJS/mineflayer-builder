@@ -22,6 +22,6 @@
     "mineflayer-builder": "file:.",
     "mineflayer": "PrismarineJS/mineflayer",
     "prismarine-viewer": "^1.13.3",
-    "standard": "^16.0.1"
+    "standard": "^17.0.0"
   }
 }
